@@ -1,203 +1,230 @@
 """
 Модуль парсера для языка 1С.
 
-Этот модуль содержит классы и функции для парсинга кода на языке 1С
-с использованием грамматики Lark.
+Этот модуль реализует парсер для языка 1С:Предприятие,
+используя новую систему версионирования грамматики и
+поддержку расширения правил через AI-агенты.
 """
 
-import os
+import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from lark import Lark, Tree, UnexpectedCharacters, UnexpectedToken
-from loguru import logger
+from lark import Lark, Token, Tree, exceptions
 
+from ast_create.agents.agent_coordinator import get_agent_coordinator
 from ast_create.config import config
+from ast_create.grammar.grammar_manager import get_grammar_manager
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
 
 
 class Parser:
     """
-    Класс для парсинга кода на языке 1С.
-
-    Attributes:
-        grammar_path (Path): Путь к файлу грамматики.
-        _parser (Lark): Экземпляр парсера Lark.
+    Парсер для языка 1С:Предприятие.
+    
+    Класс предоставляет API для разбора исходного кода на языке 1С
+    и построения синтаксического дерева. Использует систему
+    версионирования грамматики и поддержку AI-агентов для
+    автоматического расширения грамматики.
+    
+    Атрибуты:
+        grammar_manager: Менеджер грамматики
+        agent_coordinator: Координатор AI-агентов
     """
-
-    def __init__(self, grammar_path: Optional[Union[str, Path]] = None):
+    
+    def __init__(self, use_agents: bool = True):
         """
-        Инициализирует парсер с заданной грамматикой.
-
+        Инициализирует парсер.
+        
         Args:
-            grammar_path: Путь к файлу грамматики Lark.
-                          Если не указан, используется путь из конфигурации.
+            use_agents: Флаг для включения/выключения AI-агентов
         """
-        if grammar_path is None:
-            # Используем путь из конфигурации
-            grammar_path = config.grammar.grammar_path
-
-        self.grammar_path = Path(grammar_path)
-
-        # Проверяем существование файла грамматики
-        if not self.grammar_path.exists():
-            raise FileNotFoundError(f"Файл грамматики не найден: {self.grammar_path}")
-
-        logger.info(f"Инициализация парсера с грамматикой: {self.grammar_path}")
-
-        # Загружаем грамматику
-        with open(self.grammar_path, "r", encoding="utf-8") as f:
-            grammar_content = f.read()
-
-        # Создаем парсер
-        self._parser = Lark(
-            grammar_content,
-            parser=config.grammar.parser,
-            ambiguity=config.grammar.ambiguity,
-            debug=config.debug,
-        )
-
-        logger.debug("Парсер успешно инициализирован")
-
-    def parse(self, code: str) -> Tree:
+        # Получаем менеджер грамматики
+        self.grammar_manager = get_grammar_manager()
+        
+        # Получаем координатор агентов
+        self.agent_coordinator = get_agent_coordinator(enable_agents=use_agents)
+        
+        logger.info(f"Парсер инициализирован (AI-агенты: {'включены' if use_agents else 'отключены'})")
+    
+    def parse(self, code: str, max_correction_attempts: int = None) -> Tree:
         """
-        Парсит код на языке 1С и возвращает дерево разбора.
-
+        Разбирает исходный код на языке 1С.
+        
         Args:
-            code: Исходный код на языке 1С.
-
+            code: Исходный код на языке 1С
+            max_correction_attempts: Максимальное количество попыток исправления ошибок
+                (если None, используется значение из конфигурации)
+                
         Returns:
-            Tree: Дерево разбора Lark.
-
+            Tree: Синтаксическое дерево разбора
+            
         Raises:
-            SyntaxError: Если в коде есть синтаксические ошибки.
+            SyntaxError: Если код содержит синтаксические ошибки
+        """
+        if max_correction_attempts is None:
+            max_correction_attempts = config.agents.max_tokens
+        
+        # Счетчик попыток исправления ошибок
+        correction_attempts = 0
+        
+        while True:
+            try:
+                # Пытаемся разобрать код
+                tree = self.grammar_manager.parse(code)
+                
+                # Если успешно, возвращаем дерево
+                return tree
+                
+            except (exceptions.UnexpectedToken, exceptions.UnexpectedCharacters, SyntaxError) as e:
+                # Логируем ошибку
+                logger.error(f"Ошибка при разборе кода: {e}")
+                
+                # Если включена опция автоматического улучшения грамматики и есть AI-агенты
+                if config.agents.max_tokens > 0 and self.agent_coordinator.enabled:
+                    # Пытаемся улучшить грамматику
+                    correction_result = self.agent_coordinator.process_parse_error(code, str(e))
+                    
+                    if correction_result and correction_result.get("success", False):
+                        # Если успешно исправили, пытаемся снова разобрать код
+                        correction_attempts += 1
+                        logger.info(f"Попытка исправления #{correction_attempts}: грамматика обновлена")
+                        continue
+                
+                # Если достигли максимального числа попыток или не смогли исправить,
+                # выбрасываем исключение
+                raise SyntaxError(str(e))
+            
+            except Exception as e:
+                # Обрабатываем прочие ошибки
+                logger.error(f"Неожиданная ошибка при разборе кода: {e}")
+                raise
+    
+    def try_parse(self, code: str) -> Tuple[bool, Optional[Tree], Optional[Exception]]:
+        """
+        Пытается разобрать код, возвращая результат и возможную ошибку.
+        
+        Эта функция не выбрасывает исключения, а возвращает информацию об ошибке,
+        что удобно для проверки кода без прерывания выполнения программы.
+        
+        Args:
+            code: Исходный код на языке 1С
+            
+        Returns:
+            Tuple[bool, Optional[Tree], Optional[Exception]]: Кортеж из флага успеха,
+                дерева разбора (если успешно) и исключения (если произошла ошибка)
         """
         try:
-            logger.debug("Начало парсинга кода")
-            tree = self._parser.parse(code)
-            logger.debug("Парсинг успешно завершен")
-            return tree
-        except UnexpectedToken as e:
-            # Обработка ошибки неожиданного токена
-            error_context = self._get_error_context(code, e.line, e.column)
-            error_message = (
-                f"Синтаксическая ошибка: неожиданный токен '{e.token}' "
-                f"в строке {e.line}, позиция {e.column}.\n"
-                f"Ожидались: {', '.join(e.expected)}\n"
-                f"Контекст:\n{error_context}"
-            )
-            logger.error(error_message)
-            raise SyntaxError(error_message) from e
-        except UnexpectedCharacters as e:
-            # Обработка ошибки неожиданных символов
-            error_context = self._get_error_context(code, e.line, e.column)
-            error_message = (
-                f"Синтаксическая ошибка: неожиданный символ '{e.char}' "
-                f"в строке {e.line}, позиция {e.column}.\n"
-                f"Контекст:\n{error_context}"
-            )
-            logger.error(error_message)
-            raise SyntaxError(error_message) from e
+            tree = self.parse(code)
+            return True, tree, None
         except Exception as e:
-            # Обработка других ошибок
-            logger.error(f"Ошибка при парсинге: {e}")
-            raise
-
-    def parse_file(self, file_path: Union[str, Path]) -> Tree:
+            return False, None, e
+    
+    def export_grammar(self, file_path: Union[str, Path]) -> bool:
         """
-        Парсит файл с кодом на языке 1С.
-
+        Экспортирует текущую грамматику в файл.
+        
         Args:
-            file_path: Путь к файлу с исходным кодом.
-
+            file_path: Путь к файлу для экспорта
+            
         Returns:
-            Tree: Дерево разбора Lark.
-
-        Raises:
-            FileNotFoundError: Если файл не найден.
-            SyntaxError: Если в коде есть синтаксические ошибки.
+            bool: True, если экспорт выполнен успешно, иначе False
         """
-        file_path = Path(file_path)
-
-        # Проверяем существование файла
-        if not file_path.exists():
-            raise FileNotFoundError(f"Файл не найден: {file_path}")
-
-        logger.info(f"Парсинг файла: {file_path}")
-
-        # Читаем файл
-        with open(file_path, "r", encoding="utf-8") as f:
-            code = f.read()
-
-        # Парсим код
-        return self.parse(code)
-
-    def _get_error_context(self, code: str, line: int, column: int, context_lines: int = 3) -> str:
+        try:
+            # Получаем текущую грамматику
+            current_grammar = self.grammar_manager.current_version.grammar
+            
+            # Преобразуем путь в объект Path
+            file_path = Path(file_path)
+            
+            # Создаем директорию, если она не существует
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Записываем грамматику в файл
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(current_grammar)
+            
+            logger.info(f"Грамматика экспортирована в файл {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Ошибка при экспорте грамматики: {e}")
+            return False
+    
+    def get_available_versions(self) -> List[Dict[str, Any]]:
         """
-        Возвращает контекст ошибки в коде.
-
+        Возвращает список доступных версий грамматики.
+        
+        Returns:
+            List[Dict[str, Any]]: Список словарей с информацией о версиях
+        """
+        # Получаем все версии грамматики
+        versions = self.grammar_manager.get_all_versions()
+        
+        # Преобразуем в список словарей с метаинформацией
+        return [
+            {
+                "version_id": v.version_id,
+                "timestamp": v.timestamp,
+                "description": v.description,
+                "created_by": v.created_by,
+                "is_current": v.version_id == self.grammar_manager.current_version.version_id
+            }
+            for v in versions
+        ]
+    
+    def rollback_to_version(self, version_id: str) -> bool:
+        """
+        Откатывает грамматику к указанной версии.
+        
         Args:
-            code: Исходный код.
-            line: Номер строки с ошибкой.
-            column: Позиция символа с ошибкой.
-            context_lines: Количество строк контекста до и после ошибки.
-
+            version_id: Идентификатор версии
+            
         Returns:
-            str: Фрагмент кода с выделенной ошибкой.
+            bool: True, если откат выполнен успешно, иначе False
         """
-        lines = code.split("\n")
-        start_line = max(0, line - context_lines - 1)
-        end_line = min(len(lines), line + context_lines)
+        return self.grammar_manager.rollback_to_version(version_id)
+    
+    def get_parser_info(self) -> Dict[str, Any]:
+        """
+        Возвращает информацию о текущем состоянии парсера.
+        
+        Returns:
+            Dict[str, Any]: Словарь с информацией о парсере
+        """
+        current_version = self.grammar_manager.current_version
+        
+        return {
+            "current_version": {
+                "version_id": current_version.version_id,
+                "timestamp": current_version.timestamp,
+                "description": current_version.description,
+                "created_by": current_version.created_by
+            },
+            "versions_count": len(self.grammar_manager.get_all_versions()),
+            "ai_agents_enabled": self.agent_coordinator.enabled,
+            "parser_type": config.grammar.parser,
+            "ambiguity_resolution": config.grammar.ambiguity
+        }
 
-        result = []
-        for i, l in enumerate(lines[start_line:end_line], start=start_line + 1):
-            # Добавляем номер строки и саму строку
-            result.append(f"{i}: {l}")
+# Глобальный экземпляр парсера
+_parser = None
 
-            # Если это строка с ошибкой, добавляем указатель
-            if i == line:
-                result.append(" " * (len(str(i)) + 2 + column) + "^")
-
-        return "\n".join(result)
-
-
-# Создаем глобальный экземпляр парсера
-parser = None
-
-
-def get_parser() -> Parser:
+def get_parser(use_agents: bool = True) -> Parser:
     """
-    Возвращает глобальный экземпляр парсера, создавая его при необходимости.
-
-    Returns:
-        Parser: Экземпляр парсера.
-    """
-    global parser
-    if parser is None:
-        parser = Parser()
-    return parser
-
-
-def parse(code: str) -> Tree:
-    """
-    Парсит код на языке 1С, используя глобальный экземпляр парсера.
-
+    Возвращает глобальный экземпляр парсера.
+    
     Args:
-        code: Исходный код на языке 1С.
-
+        use_agents: Флаг для включения/выключения AI-агентов
+        
     Returns:
-        Tree: Дерево разбора Lark.
+        Parser: Экземпляр парсера
     """
-    return get_parser().parse(code)
-
-
-def parse_file(file_path: Union[str, Path]) -> Tree:
-    """
-    Парсит файл с кодом на языке 1С, используя глобальный экземпляр парсера.
-
-    Args:
-        file_path: Путь к файлу с исходным кодом.
-
-    Returns:
-        Tree: Дерево разбора Lark.
-    """
-    return get_parser().parse_file(file_path)
+    global _parser
+    
+    if _parser is None:
+        _parser = Parser(use_agents=use_agents)
+    
+    return _parser
