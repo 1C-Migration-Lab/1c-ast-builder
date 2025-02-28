@@ -55,7 +55,7 @@ class GrammarConfig(BaseModel):
         description="Стратегия обработки неоднозначностей"
     )
     grammar_path: str = Field(
-        default="grammar/1c_base.lark",
+        default="ast_create/grammar/1c_base.lark",
         description="Путь к базовому файлу грамматики"
     )
     version_storage: str = Field(
