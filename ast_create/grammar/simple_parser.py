@@ -5,7 +5,7 @@
 import json
 from pathlib import Path
 
-from lark import Lark, Tree, Token, UnexpectedToken, UnexpectedCharacters
+from lark import Lark, Token, Tree, UnexpectedCharacters, UnexpectedToken
 from loguru import logger
 
 # Определение грамматики

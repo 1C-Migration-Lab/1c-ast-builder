@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-
 # Корневая директория проекта
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 

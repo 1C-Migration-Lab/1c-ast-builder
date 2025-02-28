@@ -5,7 +5,7 @@
 парсинга исходного кода и управления версиями грамматики.
 """
 
-from .parser import Parser
 from .grammar_manager import GrammarManager, GrammarVersion, get_grammar_manager
+from .parser import Parser
 
 __all__ = ["Parser", "GrammarManager", "GrammarVersion", "get_grammar_manager"]
