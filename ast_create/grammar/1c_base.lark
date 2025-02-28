@@ -1,0 +1,115 @@
+// Базовая грамматика языка 1С для парсера Lark
+// Версия: 0.1.0
+
+// Начальное правило - программа состоит из последовательности утверждений
+start: statement+
+
+// Определение типов утверждений
+statement: var_declaration
+        | procedure_declaration
+        | function_declaration
+        | assignment
+        | if_statement
+        | for_statement
+        | while_statement
+        | try_except_statement
+        | expression ";"?
+
+// Объявление переменных
+var_declaration: VAR IDENTIFIER ";"
+
+// Определение процедуры
+procedure_declaration: PROCEDURE IDENTIFIER "(" [parameters] ")" [EXPORT] statement_block END_PROCEDURE
+
+// Определение функции
+function_declaration: FUNCTION IDENTIFIER "(" [parameters] ")" [EXPORT] statement_block return_statement? END_FUNCTION
+
+// Параметры функций и процедур
+parameters: parameter ("," parameter)*
+parameter: IDENTIFIER ["=" expression]
+
+// Блок кода
+statement_block: statement+
+
+// Оператор присваивания
+assignment: IDENTIFIER "=" expression ";"?
+
+// Условный оператор
+if_statement: IF expression THEN statement+ 
+              (ELSIF expression THEN statement+)* 
+              [ELSE statement+] 
+              END_IF
+
+// Цикл For
+for_statement: FOR IDENTIFIER "=" expression TO expression LOOP statement+ END_LOOP
+
+// Цикл While
+while_statement: WHILE expression LOOP statement+ END_LOOP
+
+// Обработка исключений
+try_except_statement: TRY statement+ EXCEPT statement+ END_TRY
+
+// Оператор возврата
+return_statement: RETURN [expression] ";"?
+
+// Выражения
+expression: literal
+          | IDENTIFIER
+          | function_call
+          | "(" expression ")"
+          | expression BINARY_OP expression
+          | UNARY_OP expression
+
+// Вызов функции или процедуры
+function_call: IDENTIFIER "(" [arguments] ")"
+arguments: expression ("," expression)*
+
+// Литералы
+literal: NUMBER
+       | STRING
+       | TRUE
+       | FALSE
+       | NULL
+
+// Токены
+VAR: "Перем" | "Var"
+PROCEDURE: "Процедура" | "Procedure"
+END_PROCEDURE: "КонецПроцедуры" | "EndProcedure"
+FUNCTION: "Функция" | "Function"
+END_FUNCTION: "КонецФункции" | "EndFunction"
+IF: "Если" | "If"
+THEN: "Тогда" | "Then"
+ELSIF: "ИначеЕсли" | "ElsIf"
+ELSE: "Иначе" | "Else"
+END_IF: "КонецЕсли" | "EndIf"
+FOR: "Для" | "For"
+TO: "По" | "To"
+WHILE: "Пока" | "While"
+LOOP: "Цикл" | "Loop"
+END_LOOP: "КонецЦикла" | "EndLoop"
+TRY: "Попытка" | "Try"
+EXCEPT: "Исключение" | "Except"
+END_TRY: "КонецПопытки" | "EndTry"
+RETURN: "Возврат" | "Return"
+EXPORT: "Экспорт" | "Export"
+NULL: "Неопределено" | "Undefined"
+TRUE: "Истина" | "True"
+FALSE: "Ложь" | "False"
+
+// Операторы
+BINARY_OP: "+" | "-" | "*" | "/" | "%" | ">" | "<" | ">=" | "<=" | "=" | "<>" | "И" | "и" | "AND" | "and" | "ИЛИ" | "или" | "OR" | "or"
+UNARY_OP: "НЕ" | "не" | "NOT" | "not" | "-" | "+"
+
+// Идентификатор
+IDENTIFIER: /[a-zA-Zа-яА-Я_][a-zA-Zа-яА-Я0-9_]*/
+
+// Числа
+NUMBER: /\d+(\.\d+)?/
+
+// Строки
+STRING: /"[^"]*"/ | /'[^']*'/
+
+// Пропуск пробельных символов и комментариев
+COMMENT: "//" /[^\n]*/
+%ignore COMMENT
+%ignore /\s+/ 
