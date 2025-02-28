@@ -33,11 +33,11 @@ def test_parse_simple_variable_declaration(parser):
     """Проверка парсинга простого объявления переменной."""
     code = "Перем x;"
     tree = parser.parse(code)
-    
+
     assert isinstance(tree, Tree)
     assert tree.data == "start"
     assert len(tree.children) == 1
-    
+
     var_decl = tree.children[0]
     assert var_decl.data == "var_declaration"
     assert var_decl.children[0].value == "x"
@@ -47,19 +47,19 @@ def test_parse_simple_assignment(parser):
     """Проверка парсинга простого присваивания."""
     code = "x = 5;"
     tree = parser.parse(code)
-    
+
     assert isinstance(tree, Tree)
     assert tree.data == "start"
     assert len(tree.children) == 1
-    
+
     assignment = tree.children[0]
     assert assignment.data == "assignment"
     assert assignment.children[0].value == "x"
     assert assignment.children[1].data == "expression"
-    
+
     # Исправляем проверку: получаем числовое значение из терминального узла
     num_val = assignment.children[1].children[0]
-    if hasattr(num_val, 'children') and len(num_val.children) > 0:
+    if hasattr(num_val, "children") and len(num_val.children) > 0:
         num_val = num_val.children[0]
     assert num_val.value == "5"
 
@@ -72,18 +72,18 @@ def test_parse_if_statement(parser):
     КонецЕсли;
     """
     tree = parser.parse(code)
-    
+
     assert isinstance(tree, Tree)
     assert tree.data == "start"
     assert len(tree.children) == 1
-    
+
     if_stmt = tree.children[0]
     assert if_stmt.data == "if_statement"
-    
+
     # Проверка условия
     condition = if_stmt.children[0]
     assert condition.data == "expression"
-    
+
     # Проверка тела условия - изменено с "statement" на "block" или "assignment"
     body = if_stmt.children[1]
     assert body.data in ["block", "assignment", "statement_list"]
@@ -97,11 +97,11 @@ def test_parse_procedure_declaration(parser):
     КонецПроцедуры
     """
     tree = parser.parse(code)
-    
+
     assert isinstance(tree, Tree)
     assert tree.data == "start"
     assert len(tree.children) == 1
-    
+
     proc_decl = tree.children[0]
     assert proc_decl.data == "procedure_declaration"
     assert proc_decl.children[0].value == "ТестоваяПроцедура"
@@ -115,11 +115,11 @@ def test_parse_function_declaration(parser):
     КонецФункции
     """
     tree = parser.parse(code)
-    
+
     assert isinstance(tree, Tree)
     assert tree.data == "start"
     assert len(tree.children) == 1
-    
+
     func_decl = tree.children[0]
     assert func_decl.data == "function_declaration"
     assert func_decl.children[0].value == "ТестоваяФункция"
@@ -148,26 +148,26 @@ def test_parse_example_file(parser):
         Возврат Количество * 2;
     КонецФункции
     """
-    
+
     tree = parser.parse(code)
-    
+
     # Проверяем, что дерево создано успешно
     assert isinstance(tree, Tree)
     assert tree.data == "start"
-    
+
     # Должно быть 3 основных элемента: объявление переменной и две функции
     assert len(tree.children) == 3
-    
+
     # Проверяем объявление переменной
     var_decl = tree.children[0]
     assert var_decl.data == "var_declaration"
     assert var_decl.children[0].value == "Количество"
-    
+
     # Проверяем объявление процедуры
     proc_decl = tree.children[1]
     assert proc_decl.data == "procedure_declaration"
     assert proc_decl.children[0].value == "ПосчитатьЧто_то"
-    
+
     # Проверяем объявление функции
     func_decl = tree.children[2]
     assert func_decl.data == "function_declaration"
@@ -184,11 +184,11 @@ def test_syntax_error_handling(parser):
         y = 2;
     КонецЕсли;
     """
-    
+
     # Парсер должен выбросить исключение SyntaxError
     with pytest.raises((SyntaxError, Exception)):
         parser.parse(code)
-    
+
     # Проверяем метод try_parse
     success, tree, error = parser.try_parse(code)
     assert not success
@@ -201,18 +201,18 @@ def test_grammar_export(parser):
     # Создаем временный файл для экспорта
     with tempfile.NamedTemporaryFile(suffix=".lark", delete=False) as temp_file:
         temp_path = temp_file.name
-    
+
     try:
         # Экспортируем грамматику
         result = parser.export_grammar(temp_path)
         assert result is True
-        
+
         # Проверяем, что файл создан и не пустой
         assert os.path.exists(temp_path)
         assert os.path.getsize(temp_path) > 0
-        
+
         # Проверяем содержимое файла
-        with open(temp_path, 'r', encoding='utf-8') as f:
+        with open(temp_path, "r", encoding="utf-8") as f:
             content = f.read()
             # Проверяем наличие ключевых элементов грамматики
             assert "start:" in content
@@ -230,12 +230,12 @@ def test_version_management(parser):
     parser_info = parser.get_parser_info()
     assert "current_version" in parser_info
     assert "versions_count" in parser_info
-    
+
     # Получаем список доступных версий
     versions = parser.get_available_versions()
     assert isinstance(versions, list)
     assert len(versions) > 0
-    
+
     # Проверяем, что текущая версия есть в списке
     current_version_id = parser_info["current_version"]["version_id"]
     current_versions = [v for v in versions if v["version_id"] == current_version_id]

@@ -41,7 +41,8 @@ class GrammarConfig(BaseModel):
         default="ast_create/grammar/1c_base.lark", description="Путь к базовому файлу грамматики"
     )
     base_grammar_file: str = Field(
-        default="ast_create/grammar/1c_base.lark", description="Путь к базовому файлу грамматики (для совместимости)"
+        default="ast_create/grammar/1c_base.lark",
+        description="Путь к базовому файлу грамматики (для совместимости)",
     )
     version_storage: str = Field(
         default="versions", description="Путь к хранилищу версий грамматики"

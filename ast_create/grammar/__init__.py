@@ -8,4 +8,4 @@
 from .parser import Parser
 from .grammar_manager import GrammarManager, GrammarVersion, get_grammar_manager
 
-__all__ = ['Parser', 'GrammarManager', 'GrammarVersion', 'get_grammar_manager']
+__all__ = ["Parser", "GrammarManager", "GrammarVersion", "get_grammar_manager"]

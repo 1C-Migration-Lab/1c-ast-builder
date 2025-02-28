@@ -9,7 +9,7 @@ from lark import Lark, Tree, Token, UnexpectedToken, UnexpectedCharacters
 from loguru import logger
 
 # Определение грамматики
-GRAMMAR_1C = r'''
+GRAMMAR_1C = r"""
 start: statement+
 
 ?statement: var_declaration | assignment | if_statement | procedure_declaration | function_declaration | for_statement | while_statement | try_except_statement | return_statement | call_statement
@@ -64,25 +64,25 @@ IDENTIFIER: /[a-zA-Zа-яА-ЯёЁ_][a-zA-Zа-яА-ЯёЁ0-9_]*/
 %import common.ESCAPED_STRING -> STRING
 %ignore WS
 %ignore /\/\/[^\n]*/
-'''
+"""
 
 # Путь к файлу грамматики для совместимости с тестами
 grammar_path = Path(__file__).resolve().parent / "1c_base.lark"
 
 # Создание парсера
-parser = Lark(GRAMMAR_1C, start='start', parser='lalr')
+parser = Lark(GRAMMAR_1C, start="start", parser="lalr")
 
 
 def parse(code):
     """
     Парсит код на языке 1С.
-    
+
     Args:
         code: Строка с кодом на языке 1С
-        
+
     Returns:
         Tree: Дерево разбора
-        
+
     Raises:
         SyntaxError: Если в коде есть синтаксические ошибки
     """
@@ -99,17 +99,17 @@ def parse(code):
 def export_grammar_to_file(file_path=None):
     """
     Экспортирует текущую грамматику в файл.
-    
+
     Args:
-        file_path: Путь к файлу для сохранения грамматики. 
+        file_path: Путь к файлу для сохранения грамматики.
                   Если None, используется путь по умолчанию.
-                  
+
     Returns:
         str: Путь к файлу с сохраненной грамматикой
     """
     if file_path is None:
         file_path = grammar_path
-    
+
     try:
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(GRAMMAR_1C)
@@ -123,7 +123,7 @@ def export_grammar_to_file(file_path=None):
 def get_grammar():
     """
     Возвращает текущую грамматику.
-    
+
     Returns:
         str: Текущая грамматика
     """
@@ -132,22 +132,22 @@ def get_grammar():
 
 if __name__ == "__main__":
     # Код для тестирования и демонстрации работы парсера
-    test_code = '''
+    test_code = """
     Перем x;
     x = 5;
     Если x > 3 Тогда
         x = x - 1;
     КонецЕсли;
-    '''
-    
+    """
+
     try:
         # Парсинг кода
         tree = parse(test_code)
         print(tree.pretty())
-        
+
         # Экспорт грамматики в файл
         export_path = Path(__file__).parent / "exported_grammar.lark"
         export_grammar_to_file(export_path)
         print(f"Грамматика экспортирована в файл: {export_path}")
     except Exception as e:
-        print(f"Ошибка: {e}") 
+        print(f"Ошибка: {e}")
