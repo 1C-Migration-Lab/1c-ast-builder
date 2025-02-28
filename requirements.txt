@@ -1,6 +1,6 @@
 lark>=1.1.5
 #crewai>=0.16.0
-crewai-tools>=0.0.1
+crewai[tools]
 pydantic>=2.0.0
 jsonschema>=4.17.0
 networkx>=3.0
