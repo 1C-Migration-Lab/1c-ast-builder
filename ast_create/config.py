@@ -5,11 +5,12 @@
 включая загрузку параметров из файлов, переменных окружения и их валидацию.
 """
 
-import os
 import json
-import yaml
+import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+import yaml
 from loguru import logger
 from pydantic import BaseModel, Field
 

@@ -5,15 +5,14 @@
 """
 
 import os
-import pytest
 from pathlib import Path
 
+import pytest
 from lark import Tree
-from lark.exceptions import UnexpectedToken, UnexpectedCharacters
+from lark.exceptions import UnexpectedCharacters, UnexpectedToken
 
 from ast_create.grammar import parser
 from ast_create.utils import file_utils
-
 
 # Получаем путь к текущей директории тестов
 TEST_DIR = Path(__file__).parent

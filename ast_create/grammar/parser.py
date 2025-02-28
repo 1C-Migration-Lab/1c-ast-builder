@@ -7,9 +7,9 @@
 
 import os
 from pathlib import Path
-from typing import Union, Optional, Dict, Any
+from typing import Any, Dict, Optional, Union
 
-from lark import Lark, Tree, UnexpectedToken, UnexpectedCharacters
+from lark import Lark, Tree, UnexpectedCharacters, UnexpectedToken
 from loguru import logger
 
 from ast_create.config import config

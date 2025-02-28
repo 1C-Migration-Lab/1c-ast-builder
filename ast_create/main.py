@@ -5,9 +5,10 @@
 парсинга, построения AST и автоматического расширения грамматики.
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
+
 from loguru import logger
 
 from ast_create.config import config, setup_logger

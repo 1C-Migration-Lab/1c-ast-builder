@@ -5,10 +5,11 @@
 с исходным кодом 1С и другими данными проекта.
 """
 
-import os
 import json
+import os
 from pathlib import Path
-from typing import Union, Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional, Union
+
 from loguru import logger
 
 from ast_create.config import config
