@@ -7,4 +7,4 @@
 """
 
 __version__ = "0.1.0"
-__author__ = "AST Create Team" 
+__author__ = "AST Create Team"

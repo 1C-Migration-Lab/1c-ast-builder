@@ -33,11 +33,11 @@ def test_parse_simple_variable_declaration():
     """Тест парсинга объявления переменной."""
     code = "Перем Тест;"
     tree = parser.parse(code)
-    
+
     assert isinstance(tree, Tree)
     assert tree.data == "start"
     assert len(tree.children) == 1
-    
+
     var_decl = tree.children[0]
     assert var_decl.data == "var_declaration"
     assert len(var_decl.children) == 1
@@ -48,16 +48,16 @@ def test_parse_simple_assignment():
     """Тест парсинга простого присваивания."""
     code = "Переменная = 10;"
     tree = parser.parse(code)
-    
+
     assert isinstance(tree, Tree)
     assert tree.data == "start"
     assert len(tree.children) == 1
-    
+
     assignment = tree.children[0]
     assert assignment.data == "assignment"
     assert len(assignment.children) == 2
     assert assignment.children[0].value == "Переменная"
-    
+
     expr = assignment.children[1]
     assert expr.data == "expression"
     assert expr.children[0].data == "literal"
@@ -76,10 +76,10 @@ def test_parse_if_statement():
     КонецЕсли;
     """
     tree = parser.parse(code)
-    
+
     assert isinstance(tree, Tree)
     assert tree.data == "start"
-    
+
     # Проверяем, что первый элемент - это if_statement
     if_stmt = tree.children[0]
     assert if_stmt.data == "if_statement"
@@ -93,14 +93,14 @@ def test_parse_procedure_declaration():
     КонецПроцедуры
     """
     tree = parser.parse(code)
-    
+
     assert isinstance(tree, Tree)
     assert tree.data == "start"
-    
+
     # Проверяем, что первый элемент - это procedure_declaration
     proc_decl = tree.children[0]
     assert proc_decl.data == "procedure_declaration"
-    
+
     # Проверяем имя процедуры
     assert proc_decl.children[0].value == "ТестоваяПроцедура"
 
@@ -114,14 +114,14 @@ def test_parse_function_declaration():
     КонецФункции
     """
     tree = parser.parse(code)
-    
+
     assert isinstance(tree, Tree)
     assert tree.data == "start"
-    
+
     # Проверяем, что первый элемент - это function_declaration
     func_decl = tree.children[0]
     assert func_decl.data == "function_declaration"
-    
+
     # Проверяем имя функции
     assert func_decl.children[0].value == "ТестоваяФункция"
 
@@ -129,13 +129,13 @@ def test_parse_function_declaration():
 def test_parse_example_file():
     """Тест парсинга примера файла с кодом 1С."""
     example_file = EXAMPLES_DIR / "example_1c_code.txt"
-    
+
     # Проверяем, что файл существует
     assert example_file.exists(), f"Файл примера не найден: {example_file}"
-    
+
     # Парсим файл
     tree = parser.parse_file(example_file)
-    
+
     assert isinstance(tree, Tree)
     assert tree.data == "start"
     assert len(tree.children) > 0
@@ -149,7 +149,7 @@ def test_syntax_error_handling():
         Результат = "отсутствует точка с запятой"
     КонецЕсли
     """
-    
+
     # Ожидаем, что при парсинге будет выброшено исключение SyntaxError
     with pytest.raises((SyntaxError, UnexpectedToken, UnexpectedCharacters)):
         parser.parse(code)
@@ -157,4 +157,4 @@ def test_syntax_error_handling():
 
 if __name__ == "__main__":
     # Запуск тестов при прямом вызове файла
-    pytest.main(["-v", __file__]) 
+    pytest.main(["-v", __file__])
